@@ -1,0 +1,31 @@
+[project]
+name = "cloudmask-gui"
+version = "0.1.0"
+description = "Web frontend for CloudMask AWS anonymization tool"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.100.0",
+    "uvicorn[standard]>=0.23.0",
+    "pydantic>=2.0.0",
+    "python-multipart>=0.0.6",
+    "cloudmask-aws>=0.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "ruff>=0.1.0",
+    "python-semantic-release>=8.0.0",
+]
+
+[tool.semantic_release]
+version_variable = "pyproject.toml:version"
+branch = "main"
+upload_to_pypi = false
+upload_to_release = true
+build_command = "echo 'No build needed'"
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
