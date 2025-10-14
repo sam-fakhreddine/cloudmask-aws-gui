@@ -3,7 +3,9 @@
 import logging
 import re
 import time
+from pathlib import Path
 
+import yaml
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -140,19 +142,72 @@ def validate_config_endpoint(request: ConfigValidationRequest):
 @app.get("/api/configs")
 def list_configs():
     """List saved configurations."""
-    # For now, return empty list - configs stored in browser localStorage
-    return {"configs": []}
+    config_dir = Path.home() / ".cloudmask" / "configs"
+    if not config_dir.exists():
+        return {"configs": []}
+    
+    configs = []
+    for config_file in config_dir.glob("*.yaml"):
+        configs.append(config_file.stem)
+    
+    return {"configs": sorted(configs)}
 
 
 class SaveConfigRequest(BaseModel):
     name: str
-    config: ConfigValidationRequest
+    config: dict
 
 
 @app.post("/api/configs")
 def save_config(request: SaveConfigRequest):
-    """Save configuration (placeholder - stored in browser)."""
-    return {"status": "saved", "name": request.name}
+    """Save configuration as YAML."""
+    config_dir = Path.home() / ".cloudmask" / "configs"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    
+    config_file = config_dir / f"{request.name}.yaml"
+    
+    try:
+        with config_file.open("w") as f:
+            yaml.dump(request.config, f, default_flow_style=False)
+        return {"status": "saved", "name": request.name}
+    except Exception as e:
+        logger.error(f"Failed to save config: {type(e).__name__}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to save config: {str(e)}")
+
+
+@app.get("/api/configs/{name}")
+def get_config(name: str):
+    """Load configuration from YAML."""
+    config_dir = Path.home() / ".cloudmask" / "configs"
+    config_file = config_dir / f"{name}.yaml"
+    
+    if not config_file.exists():
+        raise HTTPException(status_code=404, detail=f"Config '{name}' not found")
+    
+    try:
+        with config_file.open("r") as f:
+            config = yaml.safe_load(f)
+        return {"name": name, "config": config}
+    except Exception as e:
+        logger.error(f"Failed to load config: {type(e).__name__}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to load config: {str(e)}")
+
+
+@app.delete("/api/configs/{name}")
+def delete_config(name: str):
+    """Delete configuration."""
+    config_dir = Path.home() / ".cloudmask" / "configs"
+    config_file = config_dir / f"{name}.yaml"
+    
+    if not config_file.exists():
+        raise HTTPException(status_code=404, detail=f"Config '{name}' not found")
+    
+    try:
+        config_file.unlink()
+        return {"status": "deleted", "name": name}
+    except Exception as e:
+        logger.error(f"Failed to delete config: {type(e).__name__}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete config: {str(e)}")
 
 
 class UnmaskRequest(BaseModel):
