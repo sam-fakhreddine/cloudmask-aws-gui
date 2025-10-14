@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   backend:
     build:
@@ -7,6 +5,18 @@ services:
       dockerfile: backend/Dockerfile
     container_name: cloudmask-backend
     restart: unless-stopped
+    networks:
+      - cloudmask-network
+
+  openregex:
+    image: sunnev/openregex
+    container_name: cloudmask-openregex
+    restart: unless-stopped
+    environment:
+      - OPENREGEX_LOG_LEVEL=ERROR
+      - OPENREGEX_TIMEOUT_S=5
+      - GUNICORN_WORKERS=1
+      - GUNICORN_THREADS=4
     networks:
       - cloudmask-network
 
@@ -18,6 +28,7 @@ services:
       - "7337:80"
     depends_on:
       - backend
+      - openregex
     networks:
       - cloudmask-network
 

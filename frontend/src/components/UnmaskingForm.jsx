@@ -9,28 +9,36 @@ import {
   Header,
   Badge,
   ColumnLayout,
-  Modal,
-  Box
+  Alert
 } from '@cloudscape-design/components';
 import axios from 'axios';
-import { fileSave } from 'browser-fs-access';
-import { DiffViewer } from './DiffViewer';
+import { fileSave, fileOpen } from 'browser-fs-access';
 
-export function MaskingForm({ config }) {
+export function UnmaskingForm() {
   const [text, setText] = useState('');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [fileName, setFileName] = useState(null);
-  const [showDiff, setShowDiff] = useState(false);
+  const [mappingFile, setMappingFile] = useState(null);
   const fileInputRef = useRef(null);
-  const outputRef = useRef(null);
+  const mappingInputRef = useRef(null);
 
-  async function handleMask(preview = false) {
+  async function handleUnmask() {
     if (!text.trim()) {
       setNotifications([{
         type: 'error',
-        content: 'Please enter some text to mask',
+        content: 'Please enter some text to unmask',
+        dismissible: true,
+        onDismiss: () => setNotifications([])
+      }]);
+      return;
+    }
+
+    if (!mappingFile) {
+      setNotifications([{
+        type: 'error',
+        content: 'Please load a mapping file first',
         dismissible: true,
         onDismiss: () => setNotifications([])
       }]);
@@ -40,26 +48,21 @@ export function MaskingForm({ config }) {
     setLoading(true);
     setNotifications([]);
     try {
-      const response = await axios.post('/api/mask', {
+      const response = await axios.post('/api/unmask', {
         text: text,
-        config: config
+        mapping: mappingFile
       });
       setResult(response.data);
-      
-      if (preview) {
-        setShowDiff(true);
-      } else {
-        setNotifications([{
-          type: 'success',
-          content: `Masked ${response.data.items_masked} items in ${response.data.processing_time_ms.toFixed(1)}ms`,
-          dismissible: true,
-          onDismiss: () => setNotifications([])
-        }]);
-      }
+      setNotifications([{
+        type: 'success',
+        content: `Unmasked ${response.data.items_unmasked} items in ${response.data.processing_time_ms.toFixed(1)}ms`,
+        dismissible: true,
+        onDismiss: () => setNotifications([])
+      }]);
     } catch (err) {
       setNotifications([{
         type: 'error',
-        content: err.response?.data?.detail || 'Masking failed',
+        content: err.response?.data?.detail || 'Unmasking failed',
         dismissible: true,
         onDismiss: () => setNotifications([])
       }]);
@@ -82,38 +85,54 @@ export function MaskingForm({ config }) {
       return;
     }
 
-    if (file.size > 10 * 1024 * 1024) {
-      setNotifications([{
-        type: 'warning',
-        content: 'Large file detected. Processing may take longer.',
-        dismissible: true,
-        onDismiss: () => setNotifications([])
-      }]);
-    }
-
     setFileName({ name: file.name, size: (file.size / 1024).toFixed(1) });
     const reader = new FileReader();
     reader.onload = (e) => setText(e.target.result);
     reader.readAsText(file);
   }
 
+  async function handleMappingSelect(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const mapping = JSON.parse(text);
+      setMappingFile(mapping);
+      setNotifications([{
+        type: 'success',
+        content: `Loaded mapping file: ${file.name}`,
+        dismissible: true,
+        onDismiss: () => setNotifications([])
+      }]);
+    } catch (err) {
+      setNotifications([{
+        type: 'error',
+        content: 'Invalid mapping file format',
+        dismissible: true,
+        onDismiss: () => setNotifications([])
+      }]);
+    }
+  }
+
   function handleClear() {
     setText('');
     setResult(null);
     setFileName(null);
+    setMappingFile(null);
   }
 
   async function handleCopy() {
-    if (!result?.masked_text) return;
+    if (!result?.unmasked_text) return;
     try {
-      await navigator.clipboard.writeText(result.masked_text);
+      await navigator.clipboard.writeText(result.unmasked_text);
       setNotifications([{
         type: 'success',
         content: 'Copied to clipboard',
         dismissible: true,
         onDismiss: () => setNotifications([])
       }]);
-    } catch {
+    } catch (err) {
       setNotifications([{
         type: 'error',
         content: 'Failed to copy to clipboard',
@@ -123,16 +142,13 @@ export function MaskingForm({ config }) {
     }
   }
 
-  const charCount = text.length;
-  const lineCount = text.split('\n').length;
-
   async function handleSave() {
-    if (!result?.masked_text) return;
+    if (!result?.unmasked_text) return;
 
-    const blob = new Blob([result.masked_text], { type: 'text/plain' });
+    const blob = new Blob([result.unmasked_text], { type: 'text/plain' });
     try {
       await fileSave(blob, {
-        fileName: 'masked-output.txt',
+        fileName: 'unmasked-output.txt',
         extensions: ['.txt']
       });
     } catch (err) {
@@ -147,9 +163,41 @@ export function MaskingForm({ config }) {
     }
   }
 
+  const charCount = text.length;
+  const lineCount = text.split('\n').length;
+
   return (
     <SpaceBetween size="l">
       <Flashbar items={notifications} />
+
+      <Alert type="info" header="Mapping file required">
+        You need the mapping file that was created during the masking process to unmask data.
+      </Alert>
+
+      <Container>
+        <SpaceBetween size="m">
+          <FormField label="Mapping file" description="Load the JSON mapping file from the masking process">
+            <SpaceBetween direction="horizontal" size="xs">
+              <input
+                ref={mappingInputRef}
+                type="file"
+                accept=".json"
+                style={{ display: 'none' }}
+                onChange={handleMappingSelect}
+              />
+              <Button
+                iconName="upload"
+                onClick={() => mappingInputRef.current?.click()}
+              >
+                Load mapping file
+              </Button>
+              {mappingFile && (
+                <Badge color="green">Mapping loaded ({Object.keys(mappingFile).length} items)</Badge>
+              )}
+            </SpaceBetween>
+          </FormField>
+        </SpaceBetween>
+      </Container>
 
       <ColumnLayout columns={2}>
         <Container 
@@ -166,13 +214,13 @@ export function MaskingForm({ config }) {
                 </Button>
               }
             >
-              Input
+              Input (Masked)
             </Header>
           }
         >
           <SpaceBetween size="l">
             <FormField 
-              description="Paste or type text containing sensitive data, or load from file"
+              description="Paste or load masked text"
               secondaryControl={
                 fileName && (
                   <Badge color="blue">{fileName.name} ({fileName.size} KB)</Badge>
@@ -184,7 +232,7 @@ export function MaskingForm({ config }) {
                 value={text}
                 onChange={e => setText(e.detail.value)}
                 rows={20}
-                placeholder="Paste text here, load a file, or try Ctrl+V..."
+                placeholder="Paste masked text here or load a file..."
               />
             </FormField>
 
@@ -203,19 +251,12 @@ export function MaskingForm({ config }) {
                 Load file
               </Button>
               <Button
-                onClick={() => handleMask(true)}
-                loading={loading}
-                disabled={!text.trim()}
-              >
-                Preview
-              </Button>
-              <Button
                 variant="primary"
-                onClick={() => handleMask(false)}
+                onClick={handleUnmask}
                 loading={loading}
-                disabled={!text.trim()}
+                disabled={!text.trim() || !mappingFile}
               >
-                Mask data
+                Unmask data
               </Button>
             </SpaceBetween>
           </SpaceBetween>
@@ -243,60 +284,24 @@ export function MaskingForm({ config }) {
                   </SpaceBetween>
                 )
               }
-              info={result && <Badge color="green">{result.items_masked} items masked in {result.processing_time_ms.toFixed(1)}ms</Badge>}
+              info={result && <Badge color="green">{result.items_unmasked} items unmasked in {result.processing_time_ms.toFixed(1)}ms</Badge>}
             >
-              Output
+              Output (Original)
             </Header>
           }
         >
           <SpaceBetween size="l">
-            <FormField description={result ? 'Masked data ready' : 'Masked data will appear here after clicking "Mask data"'}>
+            <FormField description={result ? 'Original data restored' : 'Original data will appear here after unmasking'}>
               <Textarea
-                value={result?.masked_text || ''}
+                value={result?.unmasked_text || ''}
                 readOnly
                 rows={20}
-                placeholder="🔒 Masked output will appear here after processing..."
-                ref={outputRef}
+                placeholder="🔓 Original data will appear here after processing..."
               />
             </FormField>
-
-
           </SpaceBetween>
         </Container>
       </ColumnLayout>
-
-      <Modal
-        visible={showDiff}
-        onDismiss={() => setShowDiff(false)}
-        header="Preview: Before & After"
-        size="max"
-        footer={
-          <Box float="right">
-            <SpaceBetween direction="horizontal" size="xs">
-              <Button onClick={() => setShowDiff(false)}>Cancel</Button>
-              <Button 
-                variant="primary" 
-                onClick={() => {
-                  setShowDiff(false);
-                  setNotifications([{
-                    type: 'success',
-                    content: `Masked ${result.items_masked} items in ${result.processing_time_ms.toFixed(1)}ms`,
-                    dismissible: true,
-                    onDismiss: () => setNotifications([])
-                  }]);
-                }}
-              >
-                Confirm & Apply
-              </Button>
-            </SpaceBetween>
-          </Box>
-        }
-      >
-        <SpaceBetween size="m">
-          <Badge color="blue">{result?.items_masked || 0} items will be masked</Badge>
-          <DiffViewer original={text} masked={result?.masked_text || ''} />
-        </SpaceBetween>
-      </Modal>
     </SpaceBetween>
   );
 }
