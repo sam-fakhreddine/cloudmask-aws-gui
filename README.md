@@ -1,14 +1,17 @@
 # CloudMask GUI
 
-Web frontend for [CloudMask-AWS](https://github.com/sam-fakhreddine/cloudmask-aws) anonymization tool.
+Web interface for [CloudMask-AWS](https://github.com/sam-fakhreddine/cloudmask-aws) anonymization tool.
 
 ## Features
 
-- 🎭 Anonymize AWS infrastructure identifiers
-- 🌐 Modern web interface with AWS Cloudscape Design System
-- 🐳 Multi-container deployment (Docker/Podman)
+- 🎭 Mask/unmask AWS infrastructure identifiers
+- 📊 Side-by-side diff viewer for before/after comparison
+- 🔧 Configuration management (YAML/TOML)
+- 🎯 Custom regex pattern builder
 - 📋 Clipboard integration
 - 📁 File upload/download support
+- 🌐 AWS Cloudscape Design System
+- 🐳 Docker/Podman deployment
 
 ## Quick Start
 
@@ -23,8 +26,8 @@ Web frontend for [CloudMask-AWS](https://github.com/sam-fakhreddine/cloudmask-aw
 
 ```bash
 # Clone repository
-git clone <repo-url>
-cd cloudmask-gui
+git clone https://github.com/sam-fakhreddine/cloudmask-aws-gui.git
+cd cloudmask-aws-gui
 
 # Start services (Docker)
 docker-compose up -d
@@ -92,9 +95,9 @@ Browser → localhost:7337 → Nginx → backend:5337 → CloudMask
 ## API Endpoints
 
 - `GET /health` - Health check
-- `POST /api/mask` - Anonymize text
-  - Request: `{"text": "...", "patterns": []}`
-  - Response: `{"masked_text": "...", "items_masked": 0, "processing_time_ms": 0.0}`
+- `POST /api/mask` - Mask text
+- `POST /api/unmask` - Unmask text
+- `POST /api/validate-config` - Validate configuration
 
 ## Documentation
 
