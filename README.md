@@ -33,7 +33,7 @@ cd cloudmask-aws-gui
 docker-compose up -d
 
 # OR start services (Podman)
-podman-compose up -d
+podman compose up -d
 
 # Open browser
 open http://localhost:7337
