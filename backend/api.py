@@ -1,5 +1,6 @@
 """CloudMask GUI Backend API."""
 
+import logging
 import re
 import time
 
@@ -9,6 +10,9 @@ from pydantic import BaseModel
 
 from cloudmask import CloudMask, CloudUnmask, Config
 from cloudmask.config.config import CustomPattern
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="CloudMask GUI API", version="0.1.0")
 
@@ -52,9 +56,6 @@ def mask_text_endpoint(request: MaskRequest):
     start_time = time.perf_counter()
     
     try:
-        # Build CloudMask config from request
-        from cloudmask import Config
-        
         cfg = request.config
         config = Config(
             company_names=cfg.get('company_names', []),
@@ -66,7 +67,6 @@ def mask_text_endpoint(request: MaskRequest):
         
         # Add custom patterns if provided
         if cfg.get('custom_patterns'):
-            from cloudmask.config.config import CustomPattern
             config.custom_patterns = [
                 CustomPattern(name=p['name'], pattern=p['pattern'])
                 for p in cfg['custom_patterns']
@@ -84,6 +84,7 @@ def mask_text_endpoint(request: MaskRequest):
             processing_time_ms=processing_time
         )
     except Exception as e:
+        logger.error(f"Masking failed: {type(e).__name__}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Masking failed: {str(e)}")
 
 
@@ -108,6 +109,7 @@ def test_regex_endpoint(request: RegexTestRequest):
             is_valid=True
         )
     except re.error as e:
+        logger.error(f"Invalid regex pattern: {str(e)}")
         raise HTTPException(status_code=400, detail=f"Invalid regex: {str(e)}")
 
 
@@ -129,6 +131,7 @@ def validate_config_endpoint(request: ConfigValidationRequest):
         try:
             re.compile(pattern["pattern"])
         except re.error as e:
+            logger.error(f"Invalid regex in pattern '{pattern['name']}': {str(e)}")
             raise HTTPException(status_code=400, detail=f"Invalid regex in pattern '{pattern['name']}': {str(e)}")
     
     return {"status": "valid", "message": "Configuration is valid"}
@@ -175,8 +178,6 @@ def unmask_text_endpoint(request: UnmaskRequest):
     start_time = time.perf_counter()
     
     try:
-        from cloudmask import CloudUnmask
-        
         unmask = CloudUnmask(mapping=request.mapping)
         unmasked_text = unmask.unanonymize(request.text)
         items_unmasked = len(request.mapping)
@@ -189,4 +190,5 @@ def unmask_text_endpoint(request: UnmaskRequest):
             processing_time_ms=processing_time
         )
     except Exception as e:
+        logger.error(f"Unmasking failed: {type(e).__name__}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Unmasking failed: {str(e)}")
