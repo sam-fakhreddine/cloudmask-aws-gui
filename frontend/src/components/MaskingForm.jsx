@@ -6,8 +6,9 @@ import {
   Button,
   SpaceBetween,
   Flashbar,
-  Alert,
-  ButtonDropdown
+  Header,
+  Badge,
+  ColumnLayout
 } from '@cloudscape-design/components';
 import axios from 'axios';
 import { fileSave } from 'browser-fs-access';
@@ -17,7 +18,9 @@ export function MaskingForm() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const [fileName, setFileName] = useState(null);
   const fileInputRef = useRef(null);
+  const outputRef = useRef(null);
 
   async function handleMask() {
     if (!text.trim()) {
@@ -79,10 +82,40 @@ export function MaskingForm() {
       }]);
     }
 
+    setFileName({ name: file.name, size: (file.size / 1024).toFixed(1) });
     const reader = new FileReader();
     reader.onload = (e) => setText(e.target.result);
     reader.readAsText(file);
   }
+
+  function handleClear() {
+    setText('');
+    setResult(null);
+    setFileName(null);
+  }
+
+  async function handleCopy() {
+    if (!result?.masked_text) return;
+    try {
+      await navigator.clipboard.writeText(result.masked_text);
+      setNotifications([{
+        type: 'success',
+        content: 'Copied to clipboard',
+        dismissible: true,
+        onDismiss: () => setNotifications([])
+      }]);
+    } catch (err) {
+      setNotifications([{
+        type: 'error',
+        content: 'Failed to copy to clipboard',
+        dismissible: true,
+        onDismiss: () => setNotifications([])
+      }]);
+    }
+  }
+
+  const charCount = text.length;
+  const lineCount = text.split('\n').length;
 
   async function handleSave() {
     if (!result?.masked_text) return;
@@ -109,69 +142,112 @@ export function MaskingForm() {
     <SpaceBetween size="l">
       <Flashbar items={notifications} />
 
-      <Container>
-        <SpaceBetween size="l">
-          <FormField
-            label="Input text"
-            description="Paste or type text containing sensitive data, or load from file"
-          >
-            <Textarea
-              value={text}
-              onChange={e => setText(e.detail.value)}
-              rows={15}
-              placeholder="Paste text here or load a file..."
-            />
-          </FormField>
-
-          <SpaceBetween direction="horizontal" size="xs">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".txt,.json,.csv,.yaml,.yml"
-              style={{ display: 'none' }}
-              onChange={handleFileSelect}
-            />
-            <Button
-              iconName="upload"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              Load file
-            </Button>
-            <Button
-              variant="primary"
-              onClick={handleMask}
-              loading={loading}
-              disabled={!text.trim()}
-            >
-              Mask data
-            </Button>
-          </SpaceBetween>
-        </SpaceBetween>
-      </Container>
-
-      {result && (
-        <Container
+      <ColumnLayout columns={2}>
+        <Container 
           header={
-            <SpaceBetween direction="horizontal" size="xs">
-              <span>Masked output</span>
-              <Button
-                iconName="download"
-                onClick={handleSave}
-              >
-                Save result
-              </Button>
-            </SpaceBetween>
+            <Header
+              variant="h2"
+              actions={
+                <Button 
+                  iconName="remove" 
+                  onClick={handleClear}
+                  disabled={!text}
+                >
+                  Clear
+                </Button>
+              }
+            >
+              Input
+            </Header>
           }
         >
-          <FormField>
-            <Textarea
-              value={result.masked_text}
-              readOnly
-              rows={15}
-            />
-          </FormField>
+          <SpaceBetween size="l">
+            <FormField 
+              description="Paste or type text containing sensitive data, or load from file"
+              secondaryControl={
+                fileName && (
+                  <Badge color="blue">{fileName.name} ({fileName.size} KB)</Badge>
+                )
+              }
+              constraintText={text && `${charCount.toLocaleString()} characters, ${lineCount} lines`}
+            >
+              <Textarea
+                value={text}
+                onChange={e => setText(e.detail.value)}
+                rows={20}
+                placeholder="Paste text here, load a file, or try Ctrl+V..."
+              />
+            </FormField>
+
+            <SpaceBetween direction="horizontal" size="xs">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".txt,.json,.csv,.yaml,.yml"
+                style={{ display: 'none' }}
+                onChange={handleFileSelect}
+              />
+              <Button
+                iconName="upload"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                Load file
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleMask}
+                loading={loading}
+                disabled={!text.trim()}
+              >
+                Mask data
+              </Button>
+            </SpaceBetween>
+          </SpaceBetween>
         </Container>
-      )}
+
+        <Container 
+          header={
+            <Header
+              variant="h2"
+              actions={
+                result && (
+                  <SpaceBetween direction="horizontal" size="xs">
+                    <Button 
+                      iconName="copy" 
+                      onClick={handleCopy}
+                    >
+                      Copy
+                    </Button>
+                    <Button
+                      iconName="download"
+                      onClick={handleSave}
+                    >
+                      Save
+                    </Button>
+                  </SpaceBetween>
+                )
+              }
+              info={result && <Badge color="green">{result.items_masked} items masked in {result.processing_time_ms.toFixed(1)}ms</Badge>}
+            >
+              Output
+            </Header>
+          }
+        >
+          <SpaceBetween size="l">
+            <FormField description={result ? 'Masked data ready' : 'Masked data will appear here after clicking "Mask data"'}>
+              <Textarea
+                value={result?.masked_text || ''}
+                readOnly
+                rows={20}
+                placeholder="🔒 Masked output will appear here after processing..."
+                ref={outputRef}
+              />
+            </FormField>
+
+
+          </SpaceBetween>
+        </Container>
+      </ColumnLayout>
     </SpaceBetween>
   );
 }
