@@ -101,16 +101,10 @@ Browser → localhost:7337 → Nginx → backend:5337 → CloudMask
 
 ## Documentation
 
-### User Documentation
 - [Deployment Guide](DEPLOYMENT.md) - Complete deployment instructions
 - [Architecture](ARCHITECTURE.md) - System architecture and design
-
-### Developer Documentation
-- [Agent Instructions](.amazonq/rules/AGENTS.md)
-- [Git Workflow](.amazonq/rules/git-workflow.md)
-- [Node 22 Requirements](.amazonq/rules/node-requirements.md)
-- [Technical Spec](.amazonq/SPEC.md)
-- [Project Plan](.amazonq/PROJECT-PLAN.md)
+- [Technical Spec](docs/SPEC.md) - Feature specifications
+- [Project Steering](docs/STEERING.md) - Project direction
 
 ## License
 
