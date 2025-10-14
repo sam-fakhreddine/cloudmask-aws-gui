@@ -8,6 +8,7 @@ Web interface for [CloudMask-AWS](https://github.com/sam-fakhreddine/cloudmask-a
 - 📊 Side-by-side diff viewer for before/after comparison
 - 🔧 Configuration management (YAML/TOML)
 - 🎯 Custom regex pattern builder
+- 🤖 **AI-powered English to RegEx** (Ollama + Qwen2.5-Coder)
 - 📋 Clipboard integration
 - 📁 File upload/download support
 - 🌐 AWS Cloudscape Design System
@@ -39,58 +40,57 @@ podman compose up -d
 open http://localhost:7337
 ```
 
+### Single Container Architecture
+
+CloudMask GUI now runs as a single container that serves both the API and static React files. This simplifies deployment and reduces resource usage.
+
 ## Development
 
-### Backend
+### Option 1: Backend with Static Files (Production-like)
 
 ```bash
-# Create virtual environment
-uv venv
+# Build frontend first
+cd frontend
+npm install
+npm run build
+cd ..
 
-# Activate virtual environment
-source .venv/bin/activate  # Unix/macOS
-# .venv\Scripts\activate   # Windows
+# Copy build to backend
+cp -r frontend/dist backend/
 
-# Install dependencies
-uv pip install -e ".[dev]"
-
-# Run backend
+# Run backend (serves API + static files)
+source .venv/bin/activate
 cd backend
-uvicorn api:app --reload --port 5337
+uvicorn api:app --reload --port 7337
+
+# Open http://localhost:7337
 ```
 
-### Frontend
+### Option 2: Separate Dev Servers (Hot Reload)
 
 ```bash
+# Terminal 1: Backend API only
+source .venv/bin/activate
+cd backend
+uvicorn api:app --reload --port 7337
+
+# Terminal 2: Frontend dev server with proxy
 cd frontend
 npm install
 npm run dev
-```
 
-### Testing Locally
-
-```bash
-# Terminal 1: Start backend
-source .venv/bin/activate
-cd backend
-uvicorn api:app --reload --port 5337
-
-# Terminal 2: Start frontend
-cd frontend
-npm run dev
-
-# Open http://localhost:5173
+# Open http://localhost:5173 (proxies API to :7337)
 ```
 
 ## Architecture
 
 ```
-Browser → localhost:7337 → Nginx → backend:5337 → CloudMask
+Browser → localhost:7337 → FastAPI (API + Static Files) → CloudMask
 ```
 
 - **Frontend**: React + Vite + AWS Cloudscape Design System (Node 22)
 - **Backend**: Python 3.13 + FastAPI + CloudMask
-- **Deployment**: Multi-container (Docker/Podman)
+- **Deployment**: Single container (Docker/Podman)
 
 ## API Endpoints
 
@@ -103,6 +103,7 @@ Browser → localhost:7337 → Nginx → backend:5337 → CloudMask
 
 - [Deployment Guide](DEPLOYMENT.md) - Complete deployment instructions
 - [Architecture](ARCHITECTURE.md) - System architecture and design
+- [English to RegEx AI](docs/ENGLISH-TO-REGEX.md) - AI-powered regex generation
 - [Technical Spec](docs/SPEC.md) - Feature specifications
 - [Project Steering](docs/STEERING.md) - Project direction
 

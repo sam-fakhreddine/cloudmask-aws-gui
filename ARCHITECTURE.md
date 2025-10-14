@@ -11,35 +11,23 @@
                              │ HTTP/HTTPS
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                    Frontend Container (Nginx)                    │
+│                    Single App Container (Python)                 │
 │  ┌────────────────────────────────────────────────────────────┐ │
-│  │  React App (Vite Build)                                    │ │
+│  │  FastAPI Application                                       │ │
+│  │  - POST /api/mask (anonymize text)                         │ │
+│  │  - POST /api/unmask (restore original)                     │ │
+│  │  - GET /health (health check)                              │ │
+│  │  - Pydantic validation                                     │ │
+│  │  - CORS middleware                                         │ │
+│  │  - Static file serving (React build)                       │ │
+│  └────────────────────────────────────────────────────────────┘ │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │  React App (Static Files)                                  │ │
 │  │  - Cloudscape Design System                                │ │
 │  │  - Dark Mode Support                                       │ │
 │  │  - File Upload/Download                                    │ │
 │  │  - Clipboard Integration                                   │ │
-│  └────────────────────────────────────────────────────────────┘ │
-│  ┌────────────────────────────────────────────────────────────┐ │
-│  │  Nginx Reverse Proxy                                       │ │
-│  │  - Serves static files                                     │ │
-│  │  - SPA routing (try_files)                                 │ │
-│  │  - Proxies /api/* → backend:5337                           │ │
-│  └────────────────────────────────────────────────────────────┘ │
-│                                                                   │
-│  Port: 7337 (external) → 80 (internal)                          │
-└────────────────────────────┬─────────────────────────────────────┘
-                             │
-                             │ /api/* requests
-                             │ Internal Docker network
-                             ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    Backend Container (Python)                    │
-│  ┌────────────────────────────────────────────────────────────┐ │
-│  │  FastAPI Application                                       │ │
-│  │  - POST /api/mask (anonymize text)                         │ │
-│  │  - GET /health (health check)                              │ │
-│  │  - Pydantic validation                                     │ │
-│  │  - CORS middleware                                         │ │
+│  │  - Served from /dist directory                             │ │
 │  └────────────────────────────────────────────────────────────┘ │
 │  ┌────────────────────────────────────────────────────────────┐ │
 │  │  CloudMask Library                                         │ │
@@ -54,7 +42,7 @@
 │  │  - Python 3.13 runtime                                     │ │
 │  └────────────────────────────────────────────────────────────┘ │
 │                                                                   │
-│  Port: 5337 (internal only, not exposed to host)                │
+│  Port: 7337 (external)                                           │
 └───────────────────────────────────────────────────────────────────┘
 ```
 
@@ -84,7 +72,7 @@
 1. `npm install` - Install dependencies
 2. `npm run build` - Vite production build
 3. Output: `dist/` directory with optimized static files
-4. Nginx serves from `/usr/share/nginx/html`
+4. FastAPI serves from `/app/dist` directory
 
 ### Backend (FastAPI + CloudMask)
 
@@ -121,29 +109,30 @@ Response: {
 5. Measure processing time
 6. Return masked text + metadata
 
-### Nginx Reverse Proxy
+### Static File Serving
 
-**Configuration:**
-```nginx
-location / {
-    root /usr/share/nginx/html;
-    try_files $uri $uri/ /index.html;  # SPA routing
-}
+**FastAPI Configuration:**
+```python
+# Mount static assets
+app.mount("/assets", StaticFiles(directory="dist/assets"), name="assets")
 
-location /api/ {
-    proxy_pass http://backend:5337/;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_read_timeout 120s;
-}
+# Serve SPA for all non-API routes
+@app.get("/{full_path:path}")
+async def serve_spa(full_path: str):
+    if full_path.startswith("api/"):
+        raise HTTPException(status_code=404)
+    
+    file_path = Path("dist") / full_path
+    if file_path.is_file():
+        return FileResponse(file_path)
+    return FileResponse("dist/index.html")
 ```
 
 **Responsibilities:**
 - Serve React static files
 - Handle SPA routing (all routes → index.html)
-- Proxy API requests to backend
-- Set proper headers
-- Handle timeouts
+- Serve API endpoints
+- Single port for everything
 
 ### Docker Networking
 
@@ -155,15 +144,15 @@ networks:
 ```
 
 **Service Communication:**
-- Frontend → Backend: Uses service name `backend` (Docker DNS)
-- Backend NOT exposed to host (security)
-- Only frontend port 7337 exposed externally
+- App → Ollama: Uses service name `ollama` (Docker DNS)
+- Single port exposed (7337)
+- Simplified architecture
 
 **Security Benefits:**
-- Backend isolated from external access
-- All API calls go through Nginx proxy
-- No direct backend exposure
-- CORS not needed (same-origin from browser perspective)
+- Single entry point
+- No internal proxying needed
+- CORS not needed (same-origin)
+- Ollama isolated on internal network
 
 ## Data Flow
 
@@ -178,23 +167,17 @@ networks:
    ↓
 4. Frontend sends POST /api/mask via Axios
    ↓
-5. Nginx receives request at localhost:7337/api/mask
+5. FastAPI receives request at localhost:7337/api/mask
    ↓
-6. Nginx proxies to http://backend:5337/api/mask
+6. Pydantic validates request body
    ↓
-7. FastAPI receives request
+7. CloudMask.anonymize(text) processes input
    ↓
-8. Pydantic validates request body
+8. Response with masked_text + metadata
    ↓
-9. CloudMask.anonymize(text) processes input
+9. Frontend displays in Output panel
    ↓
-10. Response with masked_text + metadata
-    ↓
-11. Nginx forwards response to frontend
-    ↓
-12. Frontend displays in Output panel
-    ↓
-13. Success notification shown
+10. Success notification shown
 ```
 
 ### File Upload Flow
@@ -394,12 +377,12 @@ docker-compose logs -f backend
 - Platform-independent
 - Podman: Open-source alternative
 
-### Why Nginx?
-- Battle-tested reverse proxy
-- Efficient static file serving
-- SPA routing support
-- Low resource usage
-- Industry standard
+### Why FastAPI for Static Files?
+- Single container simplicity
+- Built-in static file support
+- SPA routing with catch-all route
+- Lower resource usage
+- Easier deployment
 
 ### Why Node 22?
 - Latest JavaScript features

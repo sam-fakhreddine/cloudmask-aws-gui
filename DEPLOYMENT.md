@@ -84,79 +84,63 @@ open http://localhost:7337
 ## Architecture
 
 ```
-Browser → localhost:7337 → Nginx (frontend container)
+Browser → localhost:7337 → FastAPI (Single Container)
                               ↓
-                         /api/* requests
-                              ↓
-                    backend:5337 (backend container)
+                         API + Static Files
                               ↓
                          CloudMask Library
 ```
 
 ### Container Details
 
-**Frontend Container:**
-- Base: `node:22-alpine`
-- Build: Vite production build
-- Runtime: Nginx 1.25
-- Port: 7337 (external) → 80 (internal)
-- Features: SPA routing, API proxy
-
-**Backend Container:**
-- Base: `python:3.13-slim`
+**Single App Container:**
+- Base: `python:3.13-alpine`
+- Build: Multi-stage (Node 22 → Python 3.13)
 - Runtime: Uvicorn ASGI server
-- Port: 5337 (internal only)
-- Features: FastAPI, CloudMask integration
+- Port: 7337 (external)
+- Features: FastAPI API + React static files
 
 **Networking:**
 - Bridge network: `cloudmask-network`
-- Backend NOT exposed to host (security)
-- All API calls proxied through Nginx
+- Single port exposed (7337)
+- Simplified architecture
 
 ## Development Mode
 
-### Backend Only
+### Option 1: Production-like (Backend serves static files)
 
 ```bash
-# Create virtual environment
-uv venv
+# Build frontend
+cd frontend
+npm install
+npm run build
+cd ..
 
-# Activate
-source .venv/bin/activate  # Unix/macOS
-.venv\Scripts\activate     # Windows
-
-# Install dependencies
-uv pip install -e ".[dev]"
+# Copy build to backend
+cp -r frontend/dist backend/
 
 # Run backend
+source .venv/bin/activate
 cd backend
-uvicorn api:app --reload --port 5337
+uvicorn api:app --reload --port 7337
+
+# Open http://localhost:7337
 ```
 
-### Frontend Only
+### Option 2: Separate Dev Servers (Hot Reload)
 
 ```bash
+# Terminal 1: Backend API
+source .venv/bin/activate
+cd backend
+uvicorn api:app --reload --port 7337
+
+# Terminal 2: Frontend dev server
 cd frontend
 npm install
 npm run dev
 
-# Opens at http://localhost:5173
-# Proxies /api/* to localhost:5337
-```
-
-### Both Together
-
-```bash
-# Terminal 1: Backend
-source .venv/bin/activate
-cd backend
-uvicorn api:app --reload --port 5337
-
-# Terminal 2: Frontend
-cd frontend
-npm run dev
-
-# Open http://localhost:5173
+# Open http://localhost:5173 (proxies /api to :7337)
 ```
 
 ## Building Images
@@ -164,26 +148,20 @@ npm run dev
 ### Docker
 
 ```bash
-# Build backend
-docker build -t cloudmask-backend -f backend/Dockerfile .
+# Build single container
+docker build -t cloudmask-app .
 
-# Build frontend
-docker build -t cloudmask-frontend frontend/
-
-# Or build both with compose
+# Or build with compose
 docker-compose build
 ```
 
 ### Podman
 
 ```bash
-# Build backend
-podman build -t cloudmask-backend -f backend/Dockerfile .
+# Build single container
+podman build -t cloudmask-app .
 
-# Build frontend
-podman build -t cloudmask-frontend frontend/
-
-# Or build both with compose
+# Or build with compose
 podman compose build
 ```
 
@@ -260,22 +238,24 @@ podman-compose up -d
 **Backend unreachable:**
 ```bash
 # Check logs
-docker-compose logs backend
+docker-compose logs app
 # or
-podman compose logs backend
+podman compose logs app
 
-# Verify service name in nginx.conf matches compose
-grep backend frontend/nginx.conf
+# Verify container is running
+docker ps
+# or
+podman ps
 ```
 
 **404 on /api requests:**
 ```bash
-# Rebuild frontend (nginx config changed)
-docker-compose build frontend
+# Rebuild container
+docker-compose build
 docker-compose up -d
 
 # or
-podman compose build frontend
+podman compose build
 podman compose up -d
 ```
 
@@ -349,8 +329,8 @@ frontend:
 ### Health Checks
 
 ```bash
-# Backend health
-curl http://localhost:7337/api/health
+# App health
+curl http://localhost:7337/health
 
 # Expected: {"status":"healthy","version":"0.1.0"}
 ```
@@ -364,8 +344,8 @@ docker-compose logs -f
 podman compose logs -f
 
 # Specific service
-docker-compose logs -f backend
-docker-compose logs -f frontend
+docker-compose logs -f app
+docker-compose logs -f ollama
 ```
 
 ### Resource Usage
@@ -399,12 +379,11 @@ podman compose up -d --build
 
 CloudMask stores mappings in container at `/root/.cloudmask/`
 
-To persist:
+Already persisted in docker-compose.yml:
 ```yaml
-# Add to docker-compose.yml
-backend:
+app:
   volumes:
-    - ./data:/root/.cloudmask
+    - ~/.cloudmask:/root/.cloudmask
 ```
 
 ## Support
