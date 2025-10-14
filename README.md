@@ -53,7 +53,7 @@ uv pip install -e ".[dev]"
 
 # Run backend
 cd backend
-uv run uvicorn api:app --reload --port 5000
+uvicorn api:app --reload --port 5000
 ```
 
 ### Frontend
@@ -64,15 +64,37 @@ npm install
 npm run dev
 ```
 
+### Testing Locally
+
+```bash
+# Terminal 1: Start backend
+source .venv/bin/activate
+cd backend
+uvicorn api:app --reload --port 5000
+
+# Terminal 2: Start frontend
+cd frontend
+npm run dev
+
+# Open http://localhost:5173
+```
+
 ## Architecture
 
 ```
-Browser → localhost:7337 → Nginx → api:5000 → Backend
+Browser → localhost:7337 → Nginx → backend:5000 → CloudMask
 ```
 
-- **Frontend**: React + TypeScript + Vite + AWS Cloudscape
+- **Frontend**: React + Vite + AWS Cloudscape Design System (Node 22)
 - **Backend**: Python 3.13 + FastAPI + CloudMask
 - **Deployment**: Multi-container (Docker/Podman)
+
+## API Endpoints
+
+- `GET /health` - Health check
+- `POST /api/mask` - Anonymize text
+  - Request: `{"text": "...", "patterns": []}`
+  - Response: `{"masked_text": "...", "items_masked": 0, "processing_time_ms": 0.0}`
 
 ## Documentation
 

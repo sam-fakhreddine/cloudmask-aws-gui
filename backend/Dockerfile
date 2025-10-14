@@ -6,11 +6,13 @@ WORKDIR /app
 RUN pip install --no-cache-dir uv
 
 # Copy project files
-COPY ../pyproject.toml .
-COPY . .
+COPY pyproject.toml uv.lock ./
+COPY backend/ ./backend/
 
 # Install dependencies
 RUN uv pip install --system -e ".[dev]"
+
+WORKDIR /app/backend
 
 # Create non-root user
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
