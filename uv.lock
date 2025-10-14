@@ -145,21 +145,21 @@ wheels = [
 
 [[package]]
 name = "cloudmask-aws"
-version = "0.4.0"
+version = "0.4.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cryptography" },
     { name = "pyperclip" },
     { name = "pyyaml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5a/bc/5fd5ef1c22b160b94521f68fa38cc10650a2e851f5521f6dc1f2c45c4650/cloudmask_aws-0.4.0.tar.gz", hash = "sha256:72d3b2bc61f13117d2469ab4f8a29baf611db7e898095d69e6f44ca639cd677f", size = 448059, upload-time = "2025-10-14T01:50:20.888Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/74/97/31d9a29a44e09f475c2157f3a13f862cca7a3df952f3541e9324edbae5b7/cloudmask_aws-0.4.1.tar.gz", hash = "sha256:4557e509b9710784c78cf236e95a404c25ff87d3ccd7545ae1eab5177b929706", size = 448055, upload-time = "2025-10-14T16:11:41.305Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/96/53/6a6b8bfce9735294bdf06d981cc9c4e1aa2da2fa17d7091d43200bfb677e/cloudmask_aws-0.4.0-py3-none-any.whl", hash = "sha256:a545fe37efc606aa3879bca4c0e28ffb0b7bd967b557aa52580cf1a155ad1a16", size = 31538, upload-time = "2025-10-14T01:50:19.673Z" },
+    { url = "https://files.pythonhosted.org/packages/ed/d8/d5a7343f086d664f0df7f3679066a31abe45b9df8c9d3fac85df435965ed/cloudmask_aws-0.4.1-py3-none-any.whl", hash = "sha256:2ba455ed8836cf1ed264aaeebc80adf3a8ade1bbd3fb20e5932b472ff243ea70", size = 31536, upload-time = "2025-10-14T16:11:39.892Z" },
 ]
 
 [[package]]
 name = "cloudmask-gui"
-version = "0.1.0"
+version = "0.4.1"
 source = { virtual = "." }
 dependencies = [
     { name = "cloudmask-aws" },
@@ -178,7 +178,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "cloudmask-aws", specifier = ">=0.1.0" },
+    { name = "cloudmask-aws", specifier = ">=0.4.1" },
     { name = "fastapi", specifier = ">=0.100.0" },
     { name = "pydantic", specifier = ">=2.0.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.4.0" },
