@@ -14,6 +14,7 @@
     "@cloudscape-design/global-styles": "^1.0.46",
     "axios": "^1.12.2",
     "browser-fs-access": "^0.38.0",
+    "js-yaml": "^4.1.0",
     "jszip": "^3.10.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"

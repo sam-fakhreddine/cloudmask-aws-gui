@@ -145,11 +145,30 @@ export function UnmaskingForm() {
   async function handleSave() {
     if (!result?.unmasked_text) return;
 
+    let outputFileName = 'unmasked-output.txt';
+    let extension = '.txt';
+    
+    if (fileName?.name) {
+      const match = fileName.name.match(/^(.+?)-masked(\.[^.]+)$/);
+      if (match) {
+        outputFileName = `${match[1]}-unmasked${match[2]}`;
+        extension = match[2];
+      } else {
+        const match2 = fileName.name.match(/^(.+)(\.[^.]+)$/);
+        if (match2) {
+          outputFileName = `${match2[1]}-unmasked${match2[2]}`;
+          extension = match2[2];
+        } else {
+          outputFileName = `${fileName.name}-unmasked.txt`;
+        }
+      }
+    }
+
     const blob = new Blob([result.unmasked_text], { type: 'text/plain' });
     try {
       await fileSave(blob, {
-        fileName: 'unmasked-output.txt',
-        extensions: ['.txt']
+        fileName: outputFileName,
+        extensions: [extension]
       });
     } catch (err) {
       if (err.name !== 'AbortError') {

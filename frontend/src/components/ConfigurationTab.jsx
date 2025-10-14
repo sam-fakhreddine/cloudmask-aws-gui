@@ -20,11 +20,14 @@ import {
 import axios from 'axios';
 import { fileSave, fileOpen } from 'browser-fs-access';
 import JSZip from 'jszip';
+import yaml from 'js-yaml';
 
 export function ConfigurationTab({ config, setConfig, savedConfigs, setSavedConfigs, setSelectedConfigName }) {
   const [selectedConfig, setSelectedConfig] = useState(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
+  const [showImportSaveModal, setShowImportSaveModal] = useState(false);
   const [configName, setConfigName] = useState('');
+  const [importedConfig, setImportedConfig] = useState(null);
   
   const [companyName, setCompanyName] = useState('');
   const [patternName, setPatternName] = useState('');
@@ -121,18 +124,19 @@ export function ConfigurationTab({ config, setConfig, savedConfigs, setSavedConf
   async function importConfig() {
     try {
       const file = await fileOpen({
-        extensions: ['.json'],
-        description: 'CloudMask Config'
+        extensions: ['.json', '.yml', '.yaml'],
+        description: 'CloudMask Config',
+        startIn: 'documents'
       });
       const text = await file.text();
-      const imported = JSON.parse(text);
+      const imported = file.name.endsWith('.json') 
+        ? JSON.parse(text)
+        : yaml.load(text);
       setConfig(imported);
-      setNotifications([{
-        type: 'success',
-        content: 'Configuration imported',
-        dismissible: true,
-        onDismiss: () => setNotifications([])
-      }]);
+      setImportedConfig(imported);
+      const baseName = file.name.replace(/\.(json|ya?ml)$/, '');
+      setConfigName(baseName);
+      setShowImportSaveModal(true);
     } catch (err) {
       if (err.name !== 'AbortError') {
         setNotifications([{
@@ -143,6 +147,41 @@ export function ConfigurationTab({ config, setConfig, savedConfigs, setSavedConf
         }]);
       }
     }
+  }
+
+  function saveImportedConfig() {
+    if (!configName.trim()) {
+      setNotifications([{
+        type: 'error',
+        content: 'Config name is required',
+        dismissible: true,
+        onDismiss: () => setNotifications([])
+      }]);
+      return;
+    }
+
+    const newConfig = {
+      name: configName,
+      config: importedConfig,
+      timestamp: new Date().toISOString()
+    };
+
+    const existing = savedConfigs.filter(c => c.name !== configName);
+    const updated = [...existing, newConfig];
+    
+    localStorage.setItem('cloudmask_configs', JSON.stringify(updated));
+    setSavedConfigs(updated);
+    setSelectedConfigName(configName);
+    setShowImportSaveModal(false);
+    setConfigName('');
+    setImportedConfig(null);
+    
+    setNotifications([{
+      type: 'success',
+      content: `Configuration "${configName}" imported and saved`,
+      dismissible: true,
+      onDismiss: () => setNotifications([])
+    }]);
   }
 
   async function backupAllConfigs() {
@@ -458,6 +497,9 @@ export function ConfigurationTab({ config, setConfig, savedConfigs, setSavedConf
 
       <Container header={<Header variant="h2">Manage Configurations</Header>}>
         <SpaceBetween size="m">
+          <Alert type="info">
+            To import from ~/.cloudmask, navigate to your home directory and select the .cloudmask folder when the file picker opens.
+          </Alert>
           <FormField label="Saved configurations" description="Load a previously saved configuration">
             <SpaceBetween direction="horizontal" size="xs">
               <Select
@@ -486,10 +528,10 @@ export function ConfigurationTab({ config, setConfig, savedConfigs, setSavedConf
               Save as...
             </Button>
             <Button onClick={exportConfig}>
-              Export JSON
+              Export config
             </Button>
             <Button onClick={importConfig}>
-              Import JSON
+              Import config
             </Button>
             <Button iconName="download" onClick={backupAllConfigs}>
               Backup all configs
@@ -520,6 +562,49 @@ export function ConfigurationTab({ config, setConfig, savedConfigs, setSavedConf
             placeholder="e.g., Production AWS"
           />
         </FormField>
+      </Modal>
+
+      <Modal
+        visible={showImportSaveModal}
+        onDismiss={() => {
+          setShowImportSaveModal(false);
+          setConfigName('');
+          setImportedConfig(null);
+        }}
+        header="Save Imported Configuration"
+        footer={
+          <Box float="right">
+            <SpaceBetween direction="horizontal" size="xs">
+              <Button onClick={() => {
+                setShowImportSaveModal(false);
+                setConfigName('');
+                setImportedConfig(null);
+                setNotifications([{
+                  type: 'info',
+                  content: 'Configuration loaded but not saved',
+                  dismissible: true,
+                  onDismiss: () => setNotifications([])
+                }]);
+              }}>Skip</Button>
+              <Button variant="primary" onClick={saveImportedConfig}>
+                Save
+              </Button>
+            </SpaceBetween>
+          </Box>
+        }
+      >
+        <SpaceBetween size="m">
+          <Alert type="info">
+            Save this configuration to access it later from the dropdown.
+          </Alert>
+          <FormField label="Configuration name">
+            <Input
+              value={configName}
+              onChange={e => setConfigName(e.detail.value)}
+              placeholder="e.g., Production AWS"
+            />
+          </FormField>
+        </SpaceBetween>
       </Modal>
     </SpaceBetween>
   );

@@ -129,11 +129,24 @@ export function MaskingForm({ config }) {
   async function handleSave() {
     if (!result?.masked_text) return;
 
+    let outputFileName = 'masked-output.txt';
+    let extension = '.txt';
+    
+    if (fileName?.name) {
+      const match = fileName.name.match(/^(.+)(\.[^.]+)$/);
+      if (match) {
+        outputFileName = `${match[1]}-masked${match[2]}`;
+        extension = match[2];
+      } else {
+        outputFileName = `${fileName.name}-masked.txt`;
+      }
+    }
+
     const blob = new Blob([result.masked_text], { type: 'text/plain' });
     try {
       await fileSave(blob, {
-        fileName: 'masked-output.txt',
-        extensions: ['.txt']
+        fileName: outputFileName,
+        extensions: [extension]
       });
     } catch (err) {
       if (err.name !== 'AbortError') {
