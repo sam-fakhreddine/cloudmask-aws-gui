@@ -53,7 +53,7 @@ uv pip install -e ".[dev]"
 
 # Run backend
 cd backend
-uvicorn api:app --reload --port 5000
+uvicorn api:app --reload --port 5337
 ```
 
 ### Frontend
@@ -70,7 +70,7 @@ npm run dev
 # Terminal 1: Start backend
 source .venv/bin/activate
 cd backend
-uvicorn api:app --reload --port 5000
+uvicorn api:app --reload --port 5337
 
 # Terminal 2: Start frontend
 cd frontend
@@ -82,7 +82,7 @@ npm run dev
 ## Architecture
 
 ```
-Browser → localhost:7337 → Nginx → backend:5000 → CloudMask
+Browser → localhost:7337 → Nginx → backend:5337 → CloudMask
 ```
 
 - **Frontend**: React + Vite + AWS Cloudscape Design System (Node 22)
@@ -98,8 +98,14 @@ Browser → localhost:7337 → Nginx → backend:5000 → CloudMask
 
 ## Documentation
 
+### User Documentation
+- [Deployment Guide](DEPLOYMENT.md) - Complete deployment instructions
+- [Architecture](ARCHITECTURE.md) - System architecture and design
+
+### Developer Documentation
 - [Agent Instructions](.amazonq/rules/AGENTS.md)
 - [Git Workflow](.amazonq/rules/git-workflow.md)
+- [Node 22 Requirements](.amazonq/rules/node-requirements.md)
 - [Technical Spec](.amazonq/SPEC.md)
 - [Project Plan](.amazonq/PROJECT-PLAN.md)
 
