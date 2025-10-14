@@ -5,17 +5,20 @@
 ### Version Bump & Release Process
 
 1. **Create feature branch**
+
    ```bash
    git checkout -b feature/your-feature
    ```
 
 2. **Make changes and commit**
+
    ```bash
    git add .
    git commit -m "feat: your feature description"
    ```
 
 3. **Bump version in feature branch**
+
    ```bash
    # Use semantic versioning based on changes:
    # - MAJOR: Breaking changes (feat! or BREAKING CHANGE:)
@@ -27,6 +30,7 @@
    ```
 
 4. **Push feature branch**
+
    ```bash
    git push -u origin feature/your-feature
    ```
@@ -40,6 +44,7 @@
    - Merge to master/main
 
 7. **Tag the release**
+
    ```bash
    git checkout master
    git pull
@@ -56,6 +61,7 @@
 ### After CLI Release
 
 1. **Update dependency**
+
    ```bash
    cd cloudmask-gui
    uv pip install --upgrade cloudmask-aws
@@ -63,11 +69,13 @@
    ```
 
 2. **Test changes**
+
    ```bash
    uv run python -c "from backend.api import app; print('OK')"
    ```
 
 3. **Commit and push**
+
    ```bash
    git add pyproject.toml uv.lock
    git commit -m "chore: update cloudmask-aws to v0.x.x"
@@ -75,6 +83,7 @@
    ```
 
 4. **Rebuild containers**
+
    ```bash
    docker-compose build
    # or
@@ -99,6 +108,7 @@
 ```
 
 **Types**:
+
 - `feat`: New feature → MINOR bump
 - `fix`: Bug fix → PATCH bump
 - `feat!`: Breaking change → MAJOR bump

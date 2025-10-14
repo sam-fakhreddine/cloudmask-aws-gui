@@ -31,10 +31,16 @@ git clone https://github.com/sam-fakhreddine/cloudmask-aws-gui.git
 cd cloudmask-aws-gui
 
 # Start services (Docker)
-docker-compose up -d
+docker compose up -d
 
 # OR start services (Podman)
 podman compose up -d
+
+# With NVIDIA GPU (Linux)
+podman compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+
+# With AMD GPU (Linux)
+podman compose -f docker-compose.yml -f docker-compose.amd.yml up -d
 
 # Open browser
 open http://localhost:7337
@@ -90,7 +96,47 @@ Browser → localhost:7337 → FastAPI (API + Static Files) → CloudMask
 
 - **Frontend**: React + Vite + AWS Cloudscape Design System (Node 22)
 - **Backend**: Python 3.13 + FastAPI + CloudMask
-- **Deployment**: Single container (Docker/Podman)
+- **AI**: Ollama (8GB RAM, optional GPU)
+- **Deployment**: Multi-container (Docker/Podman)
+
+## Configuration
+
+### Memory Requirements
+
+- **Ollama container**: 8GB RAM limit (configurable in docker-compose.yml)
+- **Recommended models**:
+  - gemma2:2b (1.6GB) - Fast, good quality
+  - qwen2.5-coder:7b (4.7GB) - Better for code patterns
+  - phi3:mini (2.3GB) - Balanced
+
+### GPU Support (Optional)
+
+**NVIDIA GPU (Linux):**
+```bash
+podman compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+```
+Requires: NVIDIA Container Toolkit
+
+**NVIDIA GPU (Windows - Docker Desktop):**
+```bash
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+```
+Requires: Docker Desktop with WSL2 backend + NVIDIA drivers
+
+**AMD GPU (Linux):**
+```bash
+podman compose -f docker-compose.yml -f docker-compose.amd.yml up -d
+```
+Requires: ROCm drivers
+
+**AMD GPU (Windows):**
+Not supported in containers. Use native Ollama installation instead.
+
+**macOS (Apple Silicon):**
+Ollama automatically uses Metal acceleration - no additional configuration needed.
+
+**Intel GPU:**
+Not currently supported by Ollama. CPU inference works on all platforms.
 
 ## API Endpoints
 

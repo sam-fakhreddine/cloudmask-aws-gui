@@ -1,0 +1,10 @@
+# AMD GPU override for Ollama
+# Usage: podman compose -f docker-compose.yml -f docker-compose.amd.yml up -d
+
+services:
+  ollama:
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    environment:
+      - HSA_OVERRIDE_GFX_VERSION=10.3.0

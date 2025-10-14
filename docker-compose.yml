@@ -21,13 +21,12 @@ services:
     ports:
       - "11434:11434"
     volumes:
-      - ollama-data:/root/.ollama
+      - ~/.ollama:/root/.ollama
     networks:
       - cloudmask-network
+    mem_limit: 12g
+    # For GPU support, use: podman compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
 
 networks:
   cloudmask-network:
     driver: bridge
-
-volumes:
-  ollama-data:

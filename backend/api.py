@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 import re
 import time
 from pathlib import Path
@@ -34,12 +35,6 @@ app.add_middleware(
 def health_check():
     """Health check endpoint."""
     return {"status": "healthy", "version": "0.1.0"}
-
-
-@app.get("/")
-def root():
-    """Root endpoint."""
-    return {"message": "CloudMask GUI API", "docs": "/docs"}
 
 
 class MaskRequest(BaseModel):
@@ -258,6 +253,9 @@ class PullModelRequest(BaseModel):
     ollama_url: str = "http://ollama:11434"
 
 
+
+
+
 class EnglishToRegexRequest(BaseModel):
     description: str
     ollama_url: str = "http://ollama:11434"
@@ -360,15 +358,84 @@ Pattern: {request.description}"""
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# Model memory requirements (approximate)
+MODEL_MEMORY_MAP = {
+    "gemma2:2b": {"ram": "1.6 GB", "vram": "1.6 GB"},
+    "phi3:mini": {"ram": "2.3 GB", "vram": "2.3 GB"},
+    "qwen2.5-coder:7b": {"ram": "4.7 GB", "vram": "4.7 GB"},
+    "qwen2.5-coder:7b-instruct-q4_K_M": {"ram": "5.5 GB", "vram": "5.5 GB"},
+    "deepseek-coder:6.7b": {"ram": "4.0 GB", "vram": "4.0 GB"},
+    "codellama:7b": {"ram": "4.0 GB", "vram": "4.0 GB"},
+}
+
+def get_model_memory(model_name: str) -> dict[str, str]:
+    """Get memory requirements for a model."""
+    for key, mem in MODEL_MEMORY_MAP.items():
+        if key in model_name:
+            return mem
+    # Default estimate based on size
+    if "2b" in model_name or "3b" in model_name:
+        return {"ram": "~2 GB", "vram": "~2 GB"}
+    elif "7b" in model_name:
+        return {"ram": "~5 GB", "vram": "~5 GB"}
+    elif "13b" in model_name:
+        return {"ram": "~8 GB", "vram": "~8 GB"}
+    return {"ram": "Unknown", "vram": "Unknown"}
+
+
+@app.get("/api/system/specs")
+async def system_specs():
+    """Get container memory limits and system info."""
+    import os
+    
+    try:
+        # Read cgroup memory limit (works in Docker/Podman)
+        mem_limit_bytes = 0
+        if os.path.exists("/sys/fs/cgroup/memory/memory.limit_in_bytes"):
+            with open("/sys/fs/cgroup/memory/memory.limit_in_bytes") as f:
+                mem_limit_bytes = int(f.read().strip())
+        elif os.path.exists("/sys/fs/cgroup/memory.max"):
+            with open("/sys/fs/cgroup/memory.max") as f:
+                content = f.read().strip()
+                mem_limit_bytes = int(content) if content != "max" else 0
+        
+        mem_limit_gb = round(mem_limit_bytes / (1024**3), 1) if mem_limit_bytes > 0 else 0
+        
+        return {
+            "container_memory_limit": f"{mem_limit_gb} GB" if mem_limit_gb > 0 else "Unknown",
+            "container_memory_limit_bytes": mem_limit_bytes
+        }
+    except Exception as e:
+        logger.error(f"Failed to read system specs: {e}")
+        return {
+            "container_memory_limit": "Unknown",
+            "container_memory_limit_bytes": 0
+        }
+
+
 @app.get("/api/ollama/status")
 async def ollama_status(ollama_url: str = "http://ollama:11434"):
-    """Check if Ollama is available and has recommended models."""
+    """Check if Ollama is available and list models with memory requirements."""
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             response = await client.get(f"{ollama_url}/api/tags")
             response.raise_for_status()
-            models = response.json().get("models", [])
-            model_names = [m.get("name", "") for m in models]
+            models_data = response.json().get("models", [])
+            
+            model_names = [m.get("name", "") for m in models_data]
+            model_details = []
+            for m in models_data:
+                name = m.get("name", "")
+                size_bytes = m.get("size", 0)
+                size_gb = round(size_bytes / (1024**3), 1) if size_bytes else 0
+                memory = get_model_memory(name)
+                
+                model_details.append({
+                    "name": name,
+                    "size": f"{size_gb} GB",
+                    "ram_required": memory["ram"],
+                    "vram_required": memory["vram"],
+                })
             
             recommended = ["gemma2", "phi3", "qwen2.5", "deepseek-coder", "codellama"]
             has_model = any(any(rec in name for rec in recommended) for name in model_names)
@@ -377,10 +444,11 @@ async def ollama_status(ollama_url: str = "http://ollama:11434"):
                 "available": True,
                 "has_model": has_model,
                 "models": model_names,
+                "model_details": model_details,
                 "recommended": recommended
             }
     except Exception:
-        return {"available": False, "has_model": False, "models": [], "recommended": []}
+        return {"available": False, "has_model": False, "models": [], "model_details": [], "recommended": []}
 
 
 @app.post("/api/ollama/pull")

@@ -5,6 +5,7 @@ import { MaskingForm } from './components/MaskingForm';
 import { UnmaskingForm } from './components/UnmaskingForm';
 import { ConfigurationTab } from './components/ConfigurationTab';
 import { RegexBuilderTab } from './components/RegexBuilderTab';
+import { OllamaToolsTab } from './components/OllamaToolsTab';
 import { applyMode, Mode } from '@cloudscape-design/global-styles';
 
 function App() {
@@ -104,6 +105,11 @@ function App() {
                 id: 'regex',
                 label: 'RegEx Builder',
                 content: <RegexBuilderTab />
+              },
+              {
+                id: 'ollama',
+                label: 'Ollama Tools',
+                content: <OllamaToolsTab />
               }
             ]}
           />

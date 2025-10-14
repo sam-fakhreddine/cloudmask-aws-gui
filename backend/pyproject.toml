@@ -5,12 +5,12 @@ description = "Web frontend for CloudMask AWS anonymization tool"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "fastapi>=0.100.0",
-    "uvicorn[standard]>=0.23.0",
-    "pydantic>=2.0.0",
-    "python-multipart>=0.0.6",
+    "fastapi>=0.119.0",
+    "uvicorn[standard]>=0.37.0",
+    "pydantic>=2.12.2",
+    "python-multipart>=0.0.20",
     "cloudmask-aws>=0.4.1",
-    "httpx>=0.25.0",
+    "httpx>=0.28.1",
 ]
 
 [project.optional-dependencies]
