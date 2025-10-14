@@ -6,7 +6,7 @@ services:
     container_name: cloudmask-backend
     restart: unless-stopped
     volumes:
-      - cloudmask-data:/root/.cloudmask
+      - ~/.cloudmask:/root/.cloudmask
     networks:
       - cloudmask-network
 
@@ -37,6 +37,3 @@ services:
 networks:
   cloudmask-network:
     driver: bridge
-
-volumes:
-  cloudmask-data:
